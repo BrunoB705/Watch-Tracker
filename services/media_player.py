@@ -8,9 +8,11 @@ from database.connection import get_connection
 6. update_minute
 7. edit_media
 8. get_media_by_id
+9. get_all_media
+10. get_media_count
 """
 
-def add_media(title: str, url: str, seconds: int = 0)->int:
+def add_media(title: str, url: str, seconds: int = 0, status: str = "pending")->int:
     if not title.strip():
         raise ValueError("El título del video no puede ser vacío")
     if not url.strip():
@@ -20,8 +22,8 @@ def add_media(title: str, url: str, seconds: int = 0)->int:
 
     with get_connection() as conn:
         cursor = conn.execute(
-            """INSERT INTO media (title, url, current_seconds) VALUES (?,?,?)""",
-            (title.strip(),url.strip(),seconds)
+            """INSERT INTO media (title, url, current_seconds,status) VALUES (?,?,?,?)""",
+            (title.strip(),url.strip(),seconds,status.strip())
         )
 
     return cursor.lastrowid
@@ -119,3 +121,17 @@ def edit_media(title:str, url:str, id:int):
         if cursor.rowcount == 0:#ROWCOUNT DEVUELVE CUANTAS FILAS FUERON CAMBIADAS DURANTE EL UPDATE
             raise ValueError("No se pudo editar el video, el ID no existe")
     return        
+
+def get_all_media():
+    with get_connection() as conn:
+        cursor = conn.execute("""
+            SELECT * FROM media""")
+        all_media = cursor.fetchall()
+        return all_media
+    
+def get_media_count():
+    with get_connection() as conn:
+        cursor = conn.execute("""
+            SELECT COUNT(*) FROM media""")
+        resultado = cursor.fetchone()[0]
+    return resultado

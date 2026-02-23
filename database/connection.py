@@ -23,7 +23,7 @@ def init_db():
                         title TEXT NOT NULL,
                         url TEXT NOT NULL,
                         current_seconds INTEGER DEFAULT 0,
-                        status TEXT NOT NULL DEFAULT 'pending'
+                        status TEXT NOT NULL DEFAULT 'ending'
                         CHECK(status IN('pending','completed')),
                         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
