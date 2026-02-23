@@ -1,5 +1,5 @@
 import sys
-from PySide6.QtWidgets import QHeaderView,QSizePolicy,QTimeEdit,QComboBox,QFormLayout,QDialog,QAbstractItemView,QApplication, QPushButton, QWidget, QVBoxLayout,QLineEdit,QTableWidgetItem,QTableWidget,QLabel,QHBoxLayout,QTabWidget,QMessageBox
+from PySide6.QtWidgets import QMainWindow,QHeaderView,QSizePolicy,QTimeEdit,QComboBox,QFormLayout,QDialog,QAbstractItemView,QApplication, QPushButton, QWidget, QVBoxLayout,QLineEdit,QTableWidgetItem,QTableWidget,QLabel,QHBoxLayout,QTabWidget,QMessageBox
 from services.media_player import add_media,get_all_media,delete_media,get_media_count
 
 class AddMediaDialog(QDialog):
@@ -57,8 +57,7 @@ class AddMediaDialog(QDialog):
             "status": self.status_input.currentText()
         }
 
-
-
+    
 
 
 class MainWindow(QWidget):
@@ -68,7 +67,7 @@ class MainWindow(QWidget):
         #MAIN LAYOUT
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
-        self.setFixedSize(1200, 400)  # ancho=800px, alto=600px
+        self.setFixedSize(1200, 400)  # ancho,alto
 
 
         #TABS
@@ -115,7 +114,6 @@ class MainWindow(QWidget):
 
 
 
-        '''''VOY A TENER QUE CAMBIAR LO DE LIST Y USAR UN TABLEWIDGET'''
 
         #CLICKED BUTTONS
         self.print_button.clicked.connect(self.agregar_item)
@@ -177,6 +175,7 @@ class MainWindow(QWidget):
     def crearTabla(self):
         self.table.setColumnCount(5)
         self.table.setHorizontalHeaderLabels(["ID","Titulo","URL","Hora:Minuto","Estado"])
+        self.table.setColumnHidden(0, True)  # Oculta la primera columna (ID)
         self.table.resizeColumnsToContents()
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         
