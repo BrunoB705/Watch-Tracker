@@ -57,7 +57,13 @@ class AddMediaDialog(QDialog):
             "status": self.status_input.currentText()
         }
 
-    
+class EditMediaDialog(QDialog):
+    def __init__(self,parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Editar Video")
+        self.edit_media_main_layout = QVBoxLayout()
+        self.setLayout(self.edit_media_main_layout)
+
 
 
 class MainWindow(QWidget):
@@ -105,6 +111,12 @@ class MainWindow(QWidget):
         self.completed_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.completed_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
+        #TAB TABLE MAP
+        self.tab_table_map = {
+            self.all_tab: self.all_table,
+            self.pending_tab: self.pending_table,
+            self.completed_tab: self.completed_table
+        }
         #CREACION Y CARGA TABLA
         self.crearTabla()
         self.cargar_tabla_desde_bd()
@@ -130,8 +142,8 @@ class MainWindow(QWidget):
         
         #CLICKED BUTTONS
         self.print_button.clicked.connect(self.agregar_item)
-        self.remove_button.clicked.connect(self.borrar_item)
-        self.edit_button.clicked.connect(self.cargar_tabla_desde_bd)
+        self.remove_button.clicked.connect(self.delete_item)
+        self.edit_button.clicked.connect(self.editar_item)
 
 
 
@@ -154,15 +166,13 @@ class MainWindow(QWidget):
 
 
     def editar_item(self):
-        text = self.line_edit.text()
-        selected_item = self.lista.currentItem()
-        if text and selected_item:
-            selected_item.setText(f"{text}")
-            print("ENTRO")
-        else:
-            error_msg = QMessageBox()
-            error_msg.setText("Error al editar el item")
-            error_msg.exec()
+        table = self.get_current_table()
+        table_selected_item = table.selectedItems()
+        if not table_selected_item:#Verificacion de si esta algo seleccionado
+            return
+        self.edit_media_dialog = EditMediaDialog(self)
+        
+
 
     def actualizar_cantidad(self):
         self.total_elements["All"].setText(f"Cantidad: {get_media_count()}")
@@ -186,14 +196,8 @@ class MainWindow(QWidget):
 
 
 
-    def borrar_item(self):
-        current_tab = self.tabs.currentWidget()
-        if current_tab == self.all_tab:
-            table = self.all_table
-        elif current_tab == self.pending_tab:
-            table = self.pending_table
-        else:
-            table = self.completed_table
+    def delete_item(self):
+        table = self.get_current_table()
         table_selected_item = table.selectedItems()
         if not table_selected_item:#Verificacion de si esta algo seleccionado
                 return
@@ -206,7 +210,7 @@ class MainWindow(QWidget):
             return
         row = table_selected_item[0].row() #Obtengo fila
         id_item = int(table.item(row,0).text()) #Obtengo el ID de la fila
-        
+
         delete_media(id_item)
         self.cargar_tabla_desde_bd()
         self.actualizar_cantidad()
@@ -240,6 +244,9 @@ class MainWindow(QWidget):
                     else:
                         value = str(value).capitalize()
                     table.setItem(row,col,QTableWidgetItem(value))
+                    
+    def get_current_table(self):
+        return self.tab_table_map[self.tabs.currentWidget()]
 
 
 def run_app():
