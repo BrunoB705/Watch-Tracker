@@ -103,7 +103,7 @@ def get_media_by_id(id:int):
         raise ValueError("No se encontro el video con ese ID")
     return media
 
-def edit_media(title:str, url:str, id:int):
+def edit_media(title:str, url:str,seconds:int,status:str, id:int):
     if id<=0:
         raise ValueError("ID invalido")
     if not title.strip():
@@ -114,9 +114,9 @@ def edit_media(title:str, url:str, id:int):
     with get_connection() as conn:
         cursor = conn.execute("""
             UPDATE media
-            SET title = ?,url = ?, updated_at = CURRENT_TIMESTAMP
+            SET title = ?,url = ?,current_seconds = ?,status = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?""",
-            (title.strip(),url.strip(),id))
+            (title.strip(),url.strip(),seconds,status,id))
         
         if cursor.rowcount == 0:#ROWCOUNT DEVUELVE CUANTAS FILAS FUERON CAMBIADAS DURANTE EL UPDATE
             raise ValueError("No se pudo editar el video, el ID no existe")

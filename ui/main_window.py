@@ -1,16 +1,27 @@
 import sys
 from PySide6.QtWidgets import QHeaderView,QSizePolicy,QTimeEdit,QComboBox,QFormLayout,QDialog,QAbstractItemView,QApplication, QPushButton, QWidget, QVBoxLayout,QLineEdit,QTableWidgetItem,QTableWidget,QLabel,QHBoxLayout,QTabWidget,QMessageBox
-from services.media_player import add_media,get_all_media,delete_media,get_media_count,get_completed,get_pending,get_pending_media_count,get_completed_media_count
-
-class AddMediaDialog(QDialog):
-    def __init__(self,parent=None):
+from services.media_player import (
+    add_media,
+    get_all_media,
+    delete_media,
+    get_media_count,
+    get_completed,
+    get_pending,
+    get_pending_media_count,
+    get_completed_media_count,
+    get_media_by_id,
+    edit_media
+)
+class MediaDialog(QDialog):
+    def __init__(self, media_data=None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Agregar Video")
-        self.add_media_main_layout = QVBoxLayout()
-        self.setLayout(self.add_media_main_layout)
+        self.media_data = media_data
+        self.edit_data = media_data is not None
+        self.resize(500,100)
 
-        self.form_layout = QFormLayout()
-        self.add_media_main_layout.addLayout(self.form_layout)
+        self.setWindowTitle("Agregar/Editar Media")
+        self.dialog_main_layout = QVBoxLayout()
+        self.setLayout(self.dialog_main_layout)
 
         #INPUTS
         self.title_input = QLineEdit()
@@ -19,26 +30,31 @@ class AddMediaDialog(QDialog):
         self.status_input = QComboBox()
         self.status_input.addItems(["Pending","Completed"])
         
+        #FORM LAYOUT
+        self.form_layout = QFormLayout()
+        self.dialog_main_layout.addLayout(self.form_layout)
 
         self.form_layout.addRow("Titulo: ",self.title_input)
         self.form_layout.addRow("URL: ",self.url_input)
         self.form_layout.addRow("Hora/Minuto: ",self.time_input)
         self.form_layout.addRow("Estado: ",self.status_input)
 
-
         #LAYOUT BUTTONS
         self.button_layout = QHBoxLayout()
-        self.add_media_main_layout.addLayout(self.button_layout)
+        self.dialog_main_layout.addLayout(self.button_layout)
+
         #BUTTONS SAVE & CANCEL
         self.save_button = QPushButton("Guardar")
         self.save_button.clicked.connect(self.save_data)
         self.button_layout.addWidget(self.save_button)
-        
-        
+    
         self.cancel_button = QPushButton("Cancelar")
         self.cancel_button.clicked.connect(self.reject)
         self.button_layout.addWidget(self.cancel_button)
 
+        #EDIT MODE CHECK
+        if self.edit_data:
+            self.load_data()
 
 
     def save_data(self):
@@ -49,6 +65,7 @@ class AddMediaDialog(QDialog):
             QMessageBox.warning(self,"Error","El URL no es correcto")
             return
         self.accept()
+
     def obtener_data(self):
         return{
             "title": self.title_input.text().strip(),
@@ -56,25 +73,26 @@ class AddMediaDialog(QDialog):
             "time": self.time_input.time().toString("HH:mm"),
             "status": self.status_input.currentText()
         }
-
-class EditMediaDialog(QDialog):
-    def __init__(self,parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Editar Video")
-        self.edit_media_main_layout = QVBoxLayout()
-        self.setLayout(self.edit_media_main_layout)
+    
+    def load_data(self):
+        self.title_input.setText(self.media_data["title"])
+        self.url_input.setText(self.media_data["url"])
+        horas, minutos = map(int, self.media_data["time"].split(":"))
+        self.time_input.setTime(self.time_input.time().fromString(
+            f"{horas:02d}:{minutos:02d}", "HH:mm"
+        ))
+        self.status_input.setCurrentText(self.media_data["status"].capitalize())
 
 
 
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
-
         #MAIN LAYOUT
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
         self.setFixedSize(1200, 400)  # ancho,alto
-
+        self.setWindowTitle("Watch Tracker")
         #TABS
         self.tabs = QTabWidget()
         self.main_layout.addWidget(self.tabs)
@@ -143,7 +161,7 @@ class MainWindow(QWidget):
         #CLICKED BUTTONS
         self.print_button.clicked.connect(self.agregar_item)
         self.remove_button.clicked.connect(self.delete_item)
-        self.edit_button.clicked.connect(self.editar_item)
+        self.edit_button.clicked.connect(self.edit_item)
 
 
 
@@ -162,25 +180,51 @@ class MainWindow(QWidget):
             layouts.addLayout(self.count_layout)
             self.total_elements[key] = self.count_label
 
-        self.actualizar_cantidad()
+        self.actualizar_cantidad_elementos()
 
 
-    def editar_item(self):
+    def edit_item(self):
         table = self.get_current_table()
         table_selected_item = table.selectedItems()
         if not table_selected_item:#Verificacion de si esta algo seleccionado
             return
-        self.edit_media_dialog = EditMediaDialog(self)
+        row = table_selected_item[0].row() #Obtengo fila
+        id_item = int(table.item(row,0).text()) #Obtengo el ID de la fila
+        try :
+            media_data = get_media_by_id(id_item)
+        except ValueError as e:
+            QMessageBox.warning(self,"Error",str(e))
+            return
+        media = {
+            "title": media_data[1],
+            "url": media_data[2],
+            "time": f"{media_data[3]//3600:02d}:{(media_data[3]%3600)//60:02d}", #current_seconds a HH:MM
+            "status": media_data[4]
+        }
+
+        self.edit_media_dialog = MediaDialog(parent=self,media_data=media)
+        if self.edit_media_dialog.exec():
+            data = self.edit_media_dialog.obtener_data()
+            horas,minutos = map(int,data['time'].split(":"))
+            segundos_totales = horas*3600 + minutos*60
+
+            try:
+                edit_media(title=data['title'],url=data['url'],seconds=segundos_totales,status=data['status'].lower(),id=id_item)
+            except ValueError as e:
+                QMessageBox.warning(self,"Error",str(e))
+                return
+        self.cargar_tabla_desde_bd()
+        self.actualizar_cantidad_elementos()
         
 
 
-    def actualizar_cantidad(self):
+    def actualizar_cantidad_elementos(self):
         self.total_elements["All"].setText(f"Cantidad: {get_media_count()}")
         self.total_elements["Completed"].setText(f"Cantidad: {get_completed_media_count()}")
         self.total_elements["Pending"].setText(f"Cantidad: {get_pending_media_count()}")
     
     def agregar_item(self):
-        self.add_media_dialog = AddMediaDialog(self)
+        self.add_media_dialog = MediaDialog(parent=self)
         if self.add_media_dialog.exec():
             data = self.add_media_dialog.obtener_data()
             horas,minutos = map(int,data['time'].split(":"))
@@ -192,7 +236,7 @@ class MainWindow(QWidget):
                 QMessageBox.warning(self,"Error",str(e))
                 return
         self.cargar_tabla_desde_bd()
-        self.actualizar_cantidad()
+        self.actualizar_cantidad_elementos()
 
 
 
@@ -213,7 +257,7 @@ class MainWindow(QWidget):
 
         delete_media(id_item)
         self.cargar_tabla_desde_bd()
-        self.actualizar_cantidad()
+        self.actualizar_cantidad_elementos()
     
 
     def crearTabla(self):
