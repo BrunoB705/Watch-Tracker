@@ -135,3 +135,19 @@ def get_media_count():
             SELECT COUNT(*) FROM media""")
         resultado = cursor.fetchone()[0]
     return resultado
+
+def get_completed_media_count():
+    with get_connection() as conn:
+        cursor = conn.execute("""
+            SELECT COUNT(*) FROM media
+            WHERE status = 'completed'""")
+        resultado = cursor.fetchone()[0]
+    return resultado
+
+def get_pending_media_count():
+    with get_connection() as conn:
+        cursor = conn.execute("""
+            SELECT COUNT(*) FROM media
+            WHERE status = 'pending'""")
+        resultado = cursor.fetchone()[0]
+    return resultado
