@@ -1,20 +1,22 @@
 import sys
 from PySide6.QtWidgets import QHeaderView,QSizePolicy,QTimeEdit,QComboBox,QFormLayout,QDialog,QAbstractItemView,QApplication, QPushButton, QWidget, QVBoxLayout,QLineEdit,QTableWidgetItem,QTableWidget,QLabel,QHBoxLayout,QTabWidget,QMessageBox
 from services.media_player import (
+    add_media,
     get_all_media,
+    delete_media,
     get_media_count,
     get_completed,
     get_pending,
     get_pending_media_count,
     get_completed_media_count,
+    get_media_by_id,
+    edit_media
 )
 from ui.dialogs import MediaDialog
-from controllers.media_controllers import MediaController
 
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.controller = MediaController()
         #MAIN LAYOUT
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
@@ -62,7 +64,9 @@ class MainWindow(QWidget):
             self.pending_tab: self.pending_table,
             self.completed_tab: self.completed_table
         }
+        #CREACION Y CARGA TABLA
         self.crearTabla()
+        self.cargar_tabla_desde_bd()
 
         #LAYOUT TABLAS
         self.all_tab_layout.addWidget(self.all_table,stretch=1)        
@@ -105,30 +109,37 @@ class MainWindow(QWidget):
             layouts.addLayout(self.count_layout)
             self.total_elements[key] = self.count_label
 
-        self.refresh_ui()
+        self.refhresh_ui()
 
     def edit_item(self):
         table = self.get_current_table()
-        selected_item = table.selectedItems()
-        if not selected_item:#Verificacion de si esta algo seleccionado
+        table_selected_item = table.selectedItems()
+        if not table_selected_item:#Verificacion de si esta algo seleccionado
             return
-        row = selected_item[0].row() #Obtengo fila
-        media_id = int(table.item(row,0).text()) #Obtengo el ID de la fila
+        row = table_selected_item[0].row() #Obtengo fila
+        id_item = int(table.item(row,0).text()) #Obtengo el ID de la fila
         try :
-            media = self.controller.get_for_edit(media_id)
+            media_data = get_media_by_id(id_item)
         except ValueError as e:
-            self.show_error(e)
+            self.show_error(self,e)
             return
-        
-        edit_dialog = MediaDialog(parent=self,media_data=media)
-        if edit_dialog.exec():
-            data = edit_dialog.obtener_data()
+        media = {
+            "title": media_data["title"],
+            "url": media_data["url"],
+            "time": f"{media_data[3]//3600:02d}:{(media_data["current_seconds"]%3600)//60:02d}", #current_seconds a HH:MM
+            "status": media_data["status"]
+        }
+
+        self.edit_media_dialog = MediaDialog(parent=self,media_data=media)
+        if self.edit_media_dialog.exec():
+            data = self.edit_media_dialog.obtener_data()
+            segundos_totales = self.hhmm_to_seconds(data["time"])
             try:
-                self.controller.edit(media_id,data)
+                edit_media(title=data['title'],url=data['url'],seconds=segundos_totales,status=data['status'].lower(),id=id_item)
             except ValueError as e:
-                self.show_error(e)
+                self.show_error(self,e)
                 return
-        self.refresh_ui()
+        self.refhresh_ui()
         
 
 
@@ -138,27 +149,36 @@ class MainWindow(QWidget):
         self.total_elements["Pending"].setText(f"Cantidad: {get_pending_media_count()}")
     
     def agregar_item(self):
-        dialog = MediaDialog(parent=self)
-        if dialog.exec():
-            data = dialog.obtener_data()
+        self.add_media_dialog = MediaDialog(parent=self)
+        if self.add_media_dialog.exec():
+            data = self.add_media_dialog.obtener_data()
+            segundos_totales = self.hhmm_to_seconds(data["time"])
             try:
-                self.controller.add(data)
+                add_media(title=data['title'],url=data['url'],seconds=segundos_totales,status=data['status'].lower())
             except ValueError as e:
-                self.show_error(e)
+                self.show_error(self,e)
                 return
-        self.refresh_ui()
+        self.refhresh_ui()
+
+
 
     def delete_item(self):
         table = self.get_current_table()
-        selected_item = table.selectedItems()
-        if not selected_item:#Verificacion de si esta algo seleccionado
+        table_selected_item = table.selectedItems()
+        if not table_selected_item:#Verificacion de si esta algo seleccionado
                 return
-        if not self.confirm_delete():
+        delete_confirmation = QMessageBox.question(
+                                    self,
+                                    "Borrar media",
+                                    "Estas seguro querer borrar?",
+                                    QMessageBox.Cancel | QMessageBox.Ok)
+        if delete_confirmation != QMessageBox.Ok:
             return
-        row = selected_item[0].row() #Obtengo fila
-        media_id = int(table.item(row,0).text()) #Obtengo el ID de la fila
-        self.controller.delete(media_id)
-        self.refresh_ui()
+        row = table_selected_item[0].row() #Obtengo fila
+        id_item = int(table.item(row,0).text()) #Obtengo el ID de la fila
+
+        delete_media(id_item)
+        self.refhresh_ui()
     
 
     def crearTabla(self):
@@ -172,35 +192,44 @@ class MainWindow(QWidget):
         
 
     def cargar_tabla_desde_bd(self):
-        tables_data = [(self.all_table,self.controller.controller_get_all()),
-                       (self.pending_table,self.controller.controller_get_pending()),
-                       (self.completed_table,self.controller.controller_get_completed())
-                       ]
+        tables_data = [(self.all_table,get_all_media()),
+                       (self.pending_table,get_pending()),
+                       (self.completed_table,get_completed())]
         
         for table,media_list in tables_data:
             table.setRowCount(0)#LIMPIA TABLA
-
             for data in media_list:
-                row_index = table.rowCount()
-                table.insertRow(row_index)
+                row = table.rowCount()
+                table.insertRow(row)
                 for col,value in enumerate(data):
-                    table.setItem(row_index,col,QTableWidgetItem(value))
+                    if col == 3:#Columna de current_seconds
+                        value = self.seconds_to_hhmm(value)
+                    else:
+                        value = str(value).capitalize()
+                    table.setItem(row,col,QTableWidgetItem(value))
                     
     def get_current_table(self):
         return self.tab_table_map[self.tabs.currentWidget()]
     
+    def seconds_to_hhmm(self,seconds:int) ->str:
+        hours = seconds//3600
+        minutes = (seconds%3600)//60
+        result = f"{hours:02d}:{minutes:02d}"
+        return result
+    
+    def hhmm_to_seconds(self,time:str) ->int:
+        hours,minutes = map(int,time.split(":"))
+        result = hours*3600+minutes*60
+        return result
 
-    def refresh_ui(self):
+    def refhresh_ui(self):
         self.cargar_tabla_desde_bd()
         self.actualizar_cantidad_elementos()
 
     def show_error(self,message:str):
         QMessageBox.warning(self,"Error",message)
 
-    def confirm_delete(self)->bool:
-        return QMessageBox.question(self,"Borrar media","Estas seguro querer borrar",
-                                    QMessageBox.Cancel |QMessageBox.Ok)==QMessageBox.Ok
-def run_window():
+def run_app():
     app = QApplication()
     ventana = MainWindow()
     ventana.show()
