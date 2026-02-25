@@ -12,78 +12,7 @@ from services.media_player import (
     get_media_by_id,
     edit_media
 )
-class MediaDialog(QDialog):
-    def __init__(self, media_data=None, parent=None):
-        super().__init__(parent)
-        self.media_data = media_data
-        self.edit_data = media_data is not None
-        self.resize(500,100)
-
-        self.setWindowTitle("Agregar/Editar Media")
-        self.dialog_main_layout = QVBoxLayout()
-        self.setLayout(self.dialog_main_layout)
-
-        #INPUTS
-        self.title_input = QLineEdit()
-        self.url_input = QLineEdit()
-        self.time_input = QTimeEdit()
-        self.status_input = QComboBox()
-        self.status_input.addItems(["Pending","Completed"])
-        
-        #FORM LAYOUT
-        self.form_layout = QFormLayout()
-        self.dialog_main_layout.addLayout(self.form_layout)
-
-        self.form_layout.addRow("Titulo: ",self.title_input)
-        self.form_layout.addRow("URL: ",self.url_input)
-        self.form_layout.addRow("Hora/Minuto: ",self.time_input)
-        self.form_layout.addRow("Estado: ",self.status_input)
-
-        #LAYOUT BUTTONS
-        self.button_layout = QHBoxLayout()
-        self.dialog_main_layout.addLayout(self.button_layout)
-
-        #BUTTONS SAVE & CANCEL
-        self.save_button = QPushButton("Guardar")
-        self.save_button.clicked.connect(self.save_data)
-        self.button_layout.addWidget(self.save_button)
-    
-        self.cancel_button = QPushButton("Cancelar")
-        self.cancel_button.clicked.connect(self.reject)
-        self.button_layout.addWidget(self.cancel_button)
-
-        #EDIT MODE CHECK
-        if self.edit_data:
-            self.load_data()
-
-
-    def save_data(self):
-        if not self.title_input.text().strip():
-            QMessageBox.warning(self, "Error","El titulo no es correcto")
-            return
-        if not self.url_input.text().strip():
-            QMessageBox.warning(self,"Error","El URL no es correcto")
-            return
-        self.accept()
-
-    def obtener_data(self):
-        return{
-            "title": self.title_input.text().strip(),
-            "url": self.url_input.text().strip(),
-            "time": self.time_input.time().toString("HH:mm"),
-            "status": self.status_input.currentText()
-        }
-    
-    def load_data(self):
-        self.title_input.setText(self.media_data["title"])
-        self.url_input.setText(self.media_data["url"])
-        horas, minutos = map(int, self.media_data["time"].split(":"))
-        self.time_input.setTime(self.time_input.time().fromString(
-            f"{horas:02d}:{minutos:02d}", "HH:mm"
-        ))
-        self.status_input.setCurrentText(self.media_data["status"].capitalize())
-
-
+from ui.dialogs import MediaDialog
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -180,8 +109,7 @@ class MainWindow(QWidget):
             layouts.addLayout(self.count_layout)
             self.total_elements[key] = self.count_label
 
-        self.actualizar_cantidad_elementos()
-
+        self.refhresh_ui()
 
     def edit_item(self):
         table = self.get_current_table()
@@ -193,28 +121,25 @@ class MainWindow(QWidget):
         try :
             media_data = get_media_by_id(id_item)
         except ValueError as e:
-            QMessageBox.warning(self,"Error",str(e))
+            self.show_error(self,e)
             return
         media = {
-            "title": media_data[1],
-            "url": media_data[2],
-            "time": f"{media_data[3]//3600:02d}:{(media_data[3]%3600)//60:02d}", #current_seconds a HH:MM
-            "status": media_data[4]
+            "title": media_data["title"],
+            "url": media_data["url"],
+            "time": f"{media_data[3]//3600:02d}:{(media_data["current_seconds"]%3600)//60:02d}", #current_seconds a HH:MM
+            "status": media_data["status"]
         }
 
         self.edit_media_dialog = MediaDialog(parent=self,media_data=media)
         if self.edit_media_dialog.exec():
             data = self.edit_media_dialog.obtener_data()
-            horas,minutos = map(int,data['time'].split(":"))
-            segundos_totales = horas*3600 + minutos*60
-
+            segundos_totales = self.hhmm_to_seconds(data["time"])
             try:
                 edit_media(title=data['title'],url=data['url'],seconds=segundos_totales,status=data['status'].lower(),id=id_item)
             except ValueError as e:
-                QMessageBox.warning(self,"Error",str(e))
+                self.show_error(self,e)
                 return
-        self.cargar_tabla_desde_bd()
-        self.actualizar_cantidad_elementos()
+        self.refhresh_ui()
         
 
 
@@ -227,16 +152,13 @@ class MainWindow(QWidget):
         self.add_media_dialog = MediaDialog(parent=self)
         if self.add_media_dialog.exec():
             data = self.add_media_dialog.obtener_data()
-            horas,minutos = map(int,data['time'].split(":"))
-            segundos_totales = horas*3600 + minutos*60
-
+            segundos_totales = self.hhmm_to_seconds(data["time"])
             try:
                 add_media(title=data['title'],url=data['url'],seconds=segundos_totales,status=data['status'].lower())
             except ValueError as e:
-                QMessageBox.warning(self,"Error",str(e))
+                self.show_error(self,e)
                 return
-        self.cargar_tabla_desde_bd()
-        self.actualizar_cantidad_elementos()
+        self.refhresh_ui()
 
 
 
@@ -256,8 +178,7 @@ class MainWindow(QWidget):
         id_item = int(table.item(row,0).text()) #Obtengo el ID de la fila
 
         delete_media(id_item)
-        self.cargar_tabla_desde_bd()
-        self.actualizar_cantidad_elementos()
+        self.refhresh_ui()
     
 
     def crearTabla(self):
@@ -282,16 +203,31 @@ class MainWindow(QWidget):
                 table.insertRow(row)
                 for col,value in enumerate(data):
                     if col == 3:#Columna de current_seconds
-                        horas = value//3600
-                        minutos = (value %3600) //60
-                        value = f"{horas:02d}:{minutos:02d}" 
+                        value = self.seconds_to_hhmm(value)
                     else:
                         value = str(value).capitalize()
                     table.setItem(row,col,QTableWidgetItem(value))
                     
     def get_current_table(self):
         return self.tab_table_map[self.tabs.currentWidget()]
+    
+    def seconds_to_hhmm(self,seconds:int) ->str:
+        hours = seconds//3600
+        minutes = (seconds%3600)//60
+        result = f"{hours:02d}:{minutes:02d}"
+        return result
+    
+    def hhmm_to_seconds(self,time:str) ->int:
+        hours,minutes = map(int,time.split(":"))
+        result = hours*3600+minutes*60
+        return result
 
+    def refhresh_ui(self):
+        self.cargar_tabla_desde_bd()
+        self.actualizar_cantidad_elementos()
+
+    def show_error(self,message:str):
+        QMessageBox.warning(self,"Error",message)
 
 def run_app():
     app = QApplication()
