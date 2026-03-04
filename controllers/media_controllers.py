@@ -26,11 +26,15 @@ class MediaController:
         return result
     def add(self,data):
         seconds = self.hhmm_to_seconds(data["time"])
+        if data["status"].lower() == "completed":
+            seconds = 0
         add_media(title=data["title"],url=data["url"],
                   seconds=seconds,status=data["status"].lower())
     
     def edit(self,id,data):
         seconds = self.hhmm_to_seconds(data["time"])
+        if data["status"].lower() == "completed": #Todo media completo tiene hora 00:00
+            seconds = 0
         edit_media(id=id,title=data["title"],
                    seconds=seconds,url=data["url"],status=data["status"].lower())
     
@@ -51,7 +55,7 @@ class MediaController:
 
         for media in media_list:
             formatted.append([str(media[0]),#id
-                              str(media[1]).capitalize(),#title
+                              str(media[1]),#title
                               media[2],#url
                               self.seconds_to_hhmm(media[3]), #current_seconds
                               str(media[4]).capitalize()]) #status
@@ -64,3 +68,4 @@ class MediaController:
     
     def controller_get_completed(self):
         return self.format_list(get_completed())
+    

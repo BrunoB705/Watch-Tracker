@@ -1,5 +1,8 @@
 import sys
+from pathlib import Path
 from PySide6.QtWidgets import QHeaderView,QSizePolicy,QTimeEdit,QComboBox,QFormLayout,QDialog,QAbstractItemView,QApplication, QPushButton, QWidget, QVBoxLayout,QLineEdit,QTableWidgetItem,QTableWidget,QLabel,QHBoxLayout,QTabWidget,QMessageBox
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QGuiApplication, QIcon
 from services.media_player import (
     get_all_media,
     get_media_count,
@@ -14,12 +17,35 @@ from controllers.media_controllers import MediaController
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
+        self.current_theme = "light"
+        self.theme_manager = ThemeManager(window=self)
+        self.theme_manager.load_theme()
         self.controller = MediaController()
+
+
         #MAIN LAYOUT
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
+        self.main_layout.setSpacing(0)
+        self.main_layout.setContentsMargins(5, 0, 5, 5)    
         self.setFixedSize(1200, 400)  # ancho,alto
         self.setWindowTitle("Watch Tracker")
+
+        # HABILITAR DARK THEME
+        self.theme_button = QPushButton("")
+        self.theme_button.setObjectName("themeButton")
+        self.theme_button.clicked.connect(self.theme_manager.toggle)
+        self.top_layout = QHBoxLayout()
+        self.top_layout.setContentsMargins(0, 10, 0, 0)
+        self.top_layout.setSpacing(0)
+
+        self.theme_button.setIcon(QIcon("ui/nightmode.png"))
+
+        self.top_layout.addStretch()
+        self.top_layout.addWidget(self.theme_button)
+        self.main_layout.addLayout(self.top_layout)
+
+
         #TABS
         self.tabs = QTabWidget()
         self.main_layout.addWidget(self.tabs)
@@ -45,16 +71,9 @@ class MainWindow(QWidget):
 
         #TABLAS
         self.all_table = QTableWidget()
-        self.all_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.all_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-
         self.pending_table = QTableWidget()
-        self.pending_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.pending_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-
         self.completed_table = QTableWidget()
-        self.completed_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.completed_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table_methods()
 
         #TAB TABLE MAP
         self.tab_table_map = {
@@ -87,7 +106,6 @@ class MainWindow(QWidget):
         self.print_button.clicked.connect(self.agregar_item)
         self.remove_button.clicked.connect(self.delete_item)
         self.edit_button.clicked.connect(self.edit_item)
-
 
 
         #CANTIDAD ELEMENTOS
@@ -130,7 +148,27 @@ class MainWindow(QWidget):
                 return
         self.refresh_ui()
         
+    def table_methods(self):
+        tables = [self.all_table,self.pending_table,self.completed_table]
+        for table in tables:
+            table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+            table.verticalHeader().setVisible(False)
 
+            try:
+                table.cellDoubleClicked.disconnect()
+            except TypeError:
+                pass
+            table.cellDoubleClicked.connect(self.copy_column_on_double_click)
+
+    def copy_column_on_double_click(self,row,column):
+        url_column = 2
+        if column != url_column:
+            return
+        table = self.sender() #Obtiene tabla que emite señal
+        item = table.item(row,column)
+        if item:
+            QGuiApplication.clipboard().setText(item.text())
 
     def actualizar_cantidad_elementos(self):
         self.total_elements["All"].setText(f"Cantidad: {get_media_count()}")
@@ -200,6 +238,19 @@ class MainWindow(QWidget):
     def confirm_delete(self)->bool:
         return QMessageBox.question(self,"Borrar media","Estas seguro querer borrar",
                                     QMessageBox.Cancel |QMessageBox.Ok)==QMessageBox.Ok
+    
+class ThemeManager:
+    def __init__(self,window):
+        self.window = window
+        self.current_theme = "light"
+
+    def load_theme(self):
+        with open(f"ui/styles/{self.current_theme}.qss") as f:
+            self.window.setStyleSheet(f.read())
+    def toggle(self):
+        self.current_theme = "dark" if self.current_theme == "light" else "light"
+        self.load_theme()
+
 def run_window():
     app = QApplication()
     ventana = MainWindow()

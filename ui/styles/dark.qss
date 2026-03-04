@@ -1,0 +1,89 @@
+/* General */
+
+QWidget {
+    background-color: #1E1E2E;
+    color: #E5E7EB;
+}
+/* Tabla*/
+QTableWidget {
+    background-color: #2A2D3E;
+    gridline-color: #3B3F5C;
+}
+QTableWidget::item:selected{
+    background-color: #4e5476;
+    gridline-color: #3B3F5C;
+}
+/*Botones*/
+QPushButton {
+    background-color: #4F46E5;
+    color: white;
+    border-radius: 6px;
+    padding: 6px 12px;
+}
+
+QPushButton:hover {
+    background-color: #4338CA;
+}
+
+QPushButton#dangerButton {
+    background-color: #EF4444;
+}
+QPushButton#themeButton{
+    background-color: #ffffff;
+}
+
+QTabWidget{
+    margin: 0px;
+    padding: 0px;
+}
+QTabWidget::pane {
+    border: 1px solid #3B3F5C;
+    background: #2A2D3E;
+    margin: 0px;
+    padding: 0px;
+}
+QTabBar{
+    margin: 0px;
+    padding: 0px;
+}
+QTabBar::tab {
+    background: #2A2D3E;
+    color: #fafafa;
+    padding: 8px 16px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    margin-right: 4px;
+    margin: 0px;
+}
+
+QTabBar::tab:selected {
+    background: #4F46E5;
+    color: white;
+}
+
+QTabBar::tab:hover {
+    background: #3B3F5C;
+}
+
+
+/*Ventana Agregar/Editar */
+QLineEdit, QTimeEdit, QComboBox {
+    background-color: #2A2D3E;
+    color: #E5E7EB;
+    border: 1px solid #3B3F5C;
+    border-radius: 6px;
+    padding: 6px;
+}
+
+/* Cuando están en foco */
+QLineEdit:focus, 
+QTimeEdit:focus, 
+QComboBox:focus {
+    border: 1px solid #4F46E5;
+}
+/* Dropdown del ComboBox */
+QComboBox QAbstractItemView {
+    background-color: #2A2D3E;
+    color: #E5E7EB;
+    selection-background-color: #4F46E5;
+}
