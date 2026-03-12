@@ -25,11 +25,3 @@ responsibilities.
 UI: Handles graphical interface and user interaction. Controller: Manages data transformation and
 communication between UI and Services. Services: Executes CRUD operations and SQL queries.
 Database: Manages SQLite connection and transactions.
-
-## Project Objective
-
-This project was developed as a personal professional exercise focused on: - Desktop application
-development with PySide6 - Layered architecture design - SQLite database management - Clean
-and maintainable code organization
-
-
