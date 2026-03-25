@@ -25,3 +25,14 @@ responsibilities.
 UI: Handles graphical interface and user interaction. Controller: Manages data transformation and
 communication between UI and Services. Services: Executes CRUD operations and SQL queries.
 Database: Manages SQLite connection and transactions.
+
+## Sample Images
+
+### Main Window - Dark Theme
+<img width="1502" height="538" alt="Watch Tracker dark main window" src="https://github.com/user-attachments/assets/8decaea1-6fb0-43f9-885d-793556ea3134" />
+
+### Main Window - Light Theme
+<img width="1502" height="538" alt="Watch Tracker light main window" src="https://github.com/user-attachments/assets/21d05e25-c456-4774-b8ba-16d57cf2d8b0" />
+
+### Edit window
+<img width="627" height="297" alt="Watch Tracker edit window" src="https://github.com/user-attachments/assets/0b7790df-ce68-4f37-9329-0a0806878b75" />
