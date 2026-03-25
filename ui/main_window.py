@@ -13,7 +13,7 @@ from services.media_player import (
 )
 from ui.dialogs import MediaDialog
 from controllers.media_controllers import MediaController
-
+from utils.paths import resource_path
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
@@ -35,16 +35,33 @@ class MainWindow(QWidget):
         self.theme_button = QPushButton("")
         self.theme_button.setObjectName("themeButton")
         self.theme_button.clicked.connect(self.theme_manager.toggle)
-        self.top_layout = QHBoxLayout()
-        self.top_layout.setContentsMargins(0, 10, 0, 0)
-        self.top_layout.setSpacing(0)
+        self.theme_layout = QHBoxLayout()
+        self.theme_layout.setContentsMargins(0, 10, 0, 0)
+        self.theme_layout.setSpacing(0)
 
-        self.theme_button.setIcon(QIcon("ui/nightmode.png"))
+        self.theme_button.setIcon(QIcon(resource_path("ui/nightmode.png")))
 
-        self.top_layout.addStretch()
-        self.top_layout.addWidget(self.theme_button)
-        self.main_layout.addLayout(self.top_layout)
+        self.theme_layout.addStretch()
+        self.theme_layout.addWidget(self.theme_button)
+        self.main_layout.addLayout(self.theme_layout)
 
+        #ORDER BY
+        self.order_by = QComboBox()
+        self.order_by.addItems(["Más Antiguo","Más Reciente"])
+        self.order_by.currentIndexChanged.connect(self.refresh_ui)
+
+        self.order_by_layout = QHBoxLayout()
+        self.order_by_layout.setContentsMargins(0, 0, 0, 0)
+        self.order_by_layout.addStretch()
+        self.order_by_label = QLabel("Ordenar por:")
+        self.order_by_label.setObjectName("orderByLabel")
+        self.order_by_layout.addWidget(self.order_by_label)
+        self.order_by_layout.addWidget(self.order_by)
+
+        self.main_layout.addLayout(self.order_by_layout)
+        
+
+        
 
         #TABS
         self.tabs = QTabWidget()
@@ -189,11 +206,12 @@ class MainWindow(QWidget):
     def delete_item(self):
         table = self.get_current_table()
         selected_item = table.selectedItems()
+        row = selected_item[0].row() #Obtengo fila
+        selected_item_title = table.item(row,1).text()#Obtengo titulo para mensaje de confirmacion
         if not selected_item:#Verificacion de si esta algo seleccionado
                 return
-        if not self.confirm_delete():
+        if not self.confirm_delete(selected_item_title):
             return
-        row = selected_item[0].row() #Obtengo fila
         media_id = int(table.item(row,0).text()) #Obtengo el ID de la fila
         self.controller.delete(media_id)
         self.refresh_ui()
@@ -210,20 +228,24 @@ class MainWindow(QWidget):
         
 
     def cargar_tabla_desde_bd(self):
-        tables_data = [(self.all_table,self.controller.controller_get_all()),
-                       (self.pending_table,self.controller.controller_get_pending()),
-                       (self.completed_table,self.controller.controller_get_completed())
+        if self.order_by.currentText() == "Más Antiguo":
+            order = "ASC"
+        else: 
+            order = "DESC"
+        tables_data = [(self.all_table,self.controller.controller_get_all(order=order)),
+                       (self.pending_table,self.controller.controller_get_pending(order=order)),
+                       (self.completed_table,self.controller.controller_get_completed(order=order))
                        ]
-        
         for table,media_list in tables_data:
             table.setRowCount(0)#LIMPIA TABLA
 
             for data in media_list:
                 row_index = table.rowCount()
                 table.insertRow(row_index)
+
                 for col,value in enumerate(data):
                     table.setItem(row_index,col,QTableWidgetItem(value))
-                    
+
     def get_current_table(self):
         return self.tab_table_map[self.tabs.currentWidget()]
     
@@ -235,18 +257,21 @@ class MainWindow(QWidget):
     def show_error(self,message:str):
         QMessageBox.warning(self,"Error",message)
 
-    def confirm_delete(self)->bool:
-        return QMessageBox.question(self,"Borrar media","Estas seguro querer borrar",
+    def confirm_delete(self,title)->bool:
+        return QMessageBox.question(self,"Borrar media",f"Estas seguro querer borrar {title}?",
                                     QMessageBox.Cancel |QMessageBox.Ok)==QMessageBox.Ok
-    
+
+from utils.paths import resource_path
 class ThemeManager:
     def __init__(self,window):
         self.window = window
         self.current_theme = "light"
 
     def load_theme(self):
-        with open(f"ui/styles/{self.current_theme}.qss") as f:
+        path = resource_path(f"ui/styles/{self.current_theme}.qss")
+        with open(path, "r", encoding="utf-8") as f:
             self.window.setStyleSheet(f.read())
+    
     def toggle(self):
         self.current_theme = "dark" if self.current_theme == "light" else "light"
         self.load_theme()

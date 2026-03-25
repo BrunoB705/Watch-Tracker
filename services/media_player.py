@@ -12,6 +12,8 @@ from database.connection import get_connection
 10. get_media_count
 """
 
+MEDIA_COLUMNS = {"updated_at","created_at","title", "status", "url", "time_watched","id"}
+
 def add_media(title: str, url: str, seconds: int = 0, status: str = "pending")->int:
     if not title.strip():
         raise ValueError("El título del video no puede ser vacío")
@@ -29,21 +31,34 @@ def add_media(title: str, url: str, seconds: int = 0, status: str = "pending")->
     return cursor.lastrowid
 
 
-def get_pending():
+def get_pending(order_by="updated_at",order="ASC"):
+    if order_by not in MEDIA_COLUMNS:
+        order_by = "updated_at"
+
+    order = order.upper()
+    if order not in {"ASC","DESC"}:
+        order = "ASC"
     with get_connection() as conn:
-        cursor = conn.execute("""
+        cursor = conn.execute(f"""
             SELECT * FROM media 
             WHERE status  = 'pending'
-            ORDER BY created_at ASC""")#VA A MOSTRAR EL PRIMER CREADO
+            ORDER BY {order_by} {order}""")
         pending_videos = cursor.fetchall()
     return pending_videos
 
-def get_completed():
+def get_completed(order_by="updated_at",order="ASC"):
+    if order_by not in MEDIA_COLUMNS:
+        order_by = "updated_at"
+
+    order = order.upper()
+    if order not in {"ASC","DESC"}:
+        order = "ASC"
+
     with get_connection() as conn:
-        cursor = conn.execute("""
+        cursor = conn.execute(f"""
             SELECT * FROM media
             WHERE status = 'completed'
-            ORDER BY updated_at DESC""")#VA A MOSTRAR EL ULTIMO UPDATEADO
+            ORDER BY {order_by} {order}""")
         completed_videos = cursor.fetchall()
     return completed_videos
 
@@ -122,10 +137,15 @@ def edit_media(title:str, url:str,seconds:int,status:str, id:int):
             raise ValueError("No se pudo editar el video, el ID no existe")
     return        
 
-def get_all_media():
+def get_all_media(order_by="id",order="ASC"): #Por default ordena por id de forma ascendente
+    if order_by not in MEDIA_COLUMNS:
+        order_by = "id"
+    if order not in {"ASC","DESC"}:
+        order = "ASC"
     with get_connection() as conn:
-        cursor = conn.execute("""
-            SELECT * FROM media""")
+        cursor = conn.execute(f"""
+            SELECT * FROM media
+            ORDER BY {order_by} {order}""")
         all_media = cursor.fetchall()
         return all_media
     

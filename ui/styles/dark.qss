@@ -9,10 +9,26 @@ QTableWidget {
     background-color: #2A2D3E;
     gridline-color: #3B3F5C;
 }
+QTableWidget::item {
+    padding: 6px;
+}
 QTableWidget::item:selected{
     background-color: #4e5476;
     gridline-color: #3B3F5C;
 }
+QHeaderView {
+    border: none;
+}
+QHeaderView::section {
+    background-color: #1d1f2c;
+    color: white;
+    border: none;
+    padding: 6px;
+    font-weight: bold;
+}
+
+
+
 /*Botones*/
 QPushButton {
     background-color: #4F46E5;
@@ -86,4 +102,26 @@ QComboBox QAbstractItemView {
     background-color: #2A2D3E;
     color: #E5E7EB;
     selection-background-color: #4F46E5;
+}
+
+
+/* Scrollbar */
+QScrollBar:vertical {
+    background-color: #F3F4F6;
+    width: 12px;
+    margin: 0px;
+}
+QScrollBar::handle:vertical {
+    background-color: #D1D5DB;
+    border-radius: 6px;
+}
+QScrollBar::handle:vertical:hover {
+    background-color: #3B82F6;
+}
+
+/* Order By */
+QLabel#orderByLabel {
+    color: #ffffff;
+    font-weight: bold;
+    
 }

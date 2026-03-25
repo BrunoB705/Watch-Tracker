@@ -60,12 +60,12 @@ class MediaController:
                               self.seconds_to_hhmm(media[3]), #current_seconds
                               str(media[4]).capitalize()]) #status
         return formatted
-    def controller_get_all(self):
-        return self.format_list(get_all_media())
+    def controller_get_all(self, order="ASC"):#ASC por default
+        return self.format_list(get_all_media(order_by="id",order=order))
     
-    def controller_get_pending(self):
-        return self.format_list(get_pending())
+    def controller_get_pending(self, order="ASC"):#ASC por default
+        return self.format_list(get_pending(order_by="id",order=order))
     
-    def controller_get_completed(self):
-        return self.format_list(get_completed())
+    def controller_get_completed(self, order="ASC"):#ASC por default
+        return self.format_list(get_completed(order_by="id",order=order))
     
