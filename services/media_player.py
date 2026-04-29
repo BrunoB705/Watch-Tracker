@@ -1,4 +1,7 @@
 from database.connection import get_connection
+from database.models import Media
+from typing import List
+
 """
 1. get_pending
 2. get_completed
@@ -14,44 +17,59 @@ from database.connection import get_connection
 
 MEDIA_COLUMNS = {"updated_at","created_at","title", "status", "url", "time_watched","id"}
 
-def add_media(title: str, url: str, seconds: int = 0, status: str = "pending")->int:
-    if not title.strip():
+def _row_to_media(row) -> Media:
+    """Convierte una fila de sqlite3.Row a objeto Media"""
+    return Media(
+        id=row["id"],
+        title=row["title"],
+        url=row["url"],
+        current_seconds=row["current_seconds"],
+        status=row["status"],
+        created_at=row["created_at"],
+        updated_at=row["updated_at"]
+    )
+
+def add_media(media: Media) -> int:
+    """Agrega un nuevo media a la BD. Retorna el ID generado."""
+    if not media.title.strip():
         raise ValueError("El título del video no puede ser vacío")
-    if not url.strip():
+    if not media.url.strip():
         raise ValueError("La URL del video no puede ser vacía")
-    if seconds<0:
+    if media.current_seconds < 0:
         raise ValueError("Los minutos no pueden ser negativos")
 
     with get_connection() as conn:
         cursor = conn.execute(
-            """INSERT INTO media (title, url, current_seconds,status) VALUES (?,?,?,?)""",
-            (title.strip(),url.strip(),seconds,status.strip())
+            """INSERT INTO media (title, url, current_seconds, status) VALUES (?, ?, ?, ?)""",
+            (media.title.strip(), media.url.strip(), media.current_seconds, media.status.strip())
         )
 
     return cursor.lastrowid
 
 
-def get_pending(order_by="updated_at",order="ASC"):
+def get_pending(order_by="updated_at", order="ASC") -> List[Media]:
+    """Retorna lista de videos pendientes como objetos Media"""
     if order_by not in MEDIA_COLUMNS:
         order_by = "updated_at"
 
     order = order.upper()
-    if order not in {"ASC","DESC"}:
+    if order not in {"ASC", "DESC"}:
         order = "ASC"
     with get_connection() as conn:
         cursor = conn.execute(f"""
             SELECT * FROM media 
-            WHERE status  = 'pending'
+            WHERE status = 'pending'
             ORDER BY {order_by} {order}""")
         pending_videos = cursor.fetchall()
-    return pending_videos
+    return [_row_to_media(row) for row in pending_videos]
 
-def get_completed(order_by="updated_at",order="ASC"):
+def get_completed(order_by="updated_at", order="ASC") -> List[Media]:
+    """Retorna lista de videos completados como objetos Media"""
     if order_by not in MEDIA_COLUMNS:
         order_by = "updated_at"
 
     order = order.upper()
-    if order not in {"ASC","DESC"}:
+    if order not in {"ASC", "DESC"}:
         order = "ASC"
 
     with get_connection() as conn:
@@ -60,7 +78,7 @@ def get_completed(order_by="updated_at",order="ASC"):
             WHERE status = 'completed'
             ORDER BY {order_by} {order}""")
         completed_videos = cursor.fetchall()
-    return completed_videos
+    return [_row_to_media(row) for row in completed_videos]
 
 def delete_media(id:int):
     if id<=0:
@@ -105,8 +123,9 @@ def update_current_seconds(seconds:int, id:int):
             raise ValueError("No se pudo actualizar el minuto del video, ID no existe")
     return
 
-def get_media_by_id(id:int):
-    if id<=0:
+def get_media_by_id(id: int) -> Media:
+    """Retorna un video como objeto Media"""
+    if id <= 0:
         raise ValueError("ID invalido")
     with get_connection() as conn:
         cursor = conn.execute("""
@@ -116,38 +135,39 @@ def get_media_by_id(id:int):
         media = cursor.fetchone()
     if media is None:
         raise ValueError("No se encontro el video con ese ID")
-    return media
+    return _row_to_media(media)
 
-def edit_media(title:str, url:str,seconds:int,status:str, id:int):
-    if id<=0:
+def edit_media(media: Media) -> None:
+    """Edita un video existente. El media debe tener id asignado"""
+    if media.id is None or media.id <= 0:
         raise ValueError("ID invalido")
-    if not title.strip():
+    if not media.title.strip():
         raise ValueError("El titulo no puede ser vacio")
-    if not url.strip():
+    if not media.url.strip():
         raise ValueError("El url no puede ser vacio")
     
     with get_connection() as conn:
         cursor = conn.execute("""
             UPDATE media
-            SET title = ?,url = ?,current_seconds = ?,status = ?, updated_at = CURRENT_TIMESTAMP
+            SET title = ?, url = ?, current_seconds = ?, status = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?""",
-            (title.strip(),url.strip(),seconds,status,id))
+            (media.title.strip(), media.url.strip(), media.current_seconds, media.status, media.id))
         
-        if cursor.rowcount == 0:#ROWCOUNT DEVUELVE CUANTAS FILAS FUERON CAMBIADAS DURANTE EL UPDATE
-            raise ValueError("No se pudo editar el video, el ID no existe")
-    return        
+        if cursor.rowcount == 0:
+            raise ValueError("No se pudo editar el video, el ID no existe")        
 
-def get_all_media(order_by="id",order="ASC"): #Por default ordena por id de forma ascendente
+def get_all_media(order_by="id", order="ASC") -> List[Media]:
+    """Retorna lista de todos los videos como objetos Media"""
     if order_by not in MEDIA_COLUMNS:
         order_by = "id"
-    if order not in {"ASC","DESC"}:
+    if order not in {"ASC", "DESC"}:
         order = "ASC"
     with get_connection() as conn:
         cursor = conn.execute(f"""
             SELECT * FROM media
             ORDER BY {order_by} {order}""")
         all_media = cursor.fetchall()
-        return all_media
+        return [_row_to_media(row) for row in all_media]
     
 def get_media_count():
     with get_connection() as conn:

@@ -8,7 +8,12 @@ rmdir /s /q dist 2>nul
 del *.spec 2>nul
 
 echo Compilando...
-pyinstaller main.py --onefile --windowed --clean --add-data "ui;ui" --distpath %OUTPUT_DIR%\dist --workpath %OUTPUT_DIR%\build --specpath %OUTPUT_DIR%
+
+pyinstaller main.py --onefile --windowed --clean ^
+--add-data "%cd%\ui;ui" ^
+--distpath %OUTPUT_DIR%\dist ^
+--workpath %OUTPUT_DIR%\build ^
+--specpath %OUTPUT_DIR%
 
 echo.
 echo Listo. Ejecutable en %OUTPUT_DIR%\dist\
