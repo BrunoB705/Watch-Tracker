@@ -1,0 +1,30 @@
+# Imagenes
+Imagenes/
+
+# IDE / tests
+.pytest_cache
+.vscode
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# PyInstaller
+build/
+dist/
+*.spec
+*.spec
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
